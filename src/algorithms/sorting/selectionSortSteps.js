@@ -25,7 +25,7 @@ export const selectionSortSources = {
       compare: 6,
       updateMin: 7,
       swap: 11,
-      complete: 15,
+      complete: 14,
     },
   },
   python: {
@@ -102,7 +102,7 @@ export const selectionSortSources = {
       innerLoop: 5,
       compare: 6,
       updateMin: 7,
-      swap: 10,
+      swap: 11,
       complete: 14,
     },
   },
@@ -184,7 +184,7 @@ export const selectionSortSources = {
       innerLoop: 5,
       compare: 6,
       updateMin: 7,
-      swap: 10,
+      swap: 11,
       complete: 14,
     },
   },
@@ -202,6 +202,42 @@ export function resolveSelectionSortLine(language, lineKey) {
   )
 }
 
+/**
+ * Builds the replay steps for an ascending selection sort.
+ *
+ * This is a pure step generator: it copies `inputArray` (the caller's array is
+ * never mutated) and returns an array of frames built with `createStep`. Each
+ * frame carries a `lineKey` that `resolveSelectionSortLine` maps to a line in
+ * the displayed source for the selected language, so every key used here must
+ * exist in every `lineMap` above and point at the matching line.
+ *
+ * Only ascending order is supported; there is no direction parameter. Empty
+ * and single-element arrays are valid and simply return their input.
+ *
+ * Worked fixture: [3, 1, 2] -> [1, 2, 3] in 21 steps (2 swaps).
+ *
+ *   pass i=0: assume min=3 (idx 0); compare 1 < 3 -> min idx 1;
+ *             compare 2 < 1? no; swap idx 0 <-> 1       -> [1, 3, 2]
+ *   pass i=1: assume min=3 (idx 1); compare 2 < 3 -> min idx 2;
+ *             swap idx 1 <-> 2                          -> [1, 2, 3]
+ *   pass i=2: last element; no comparisons, no swap     -> [1, 2, 3]
+ *
+ * Notes on the frames:
+ * - A 'swap' frame shows the array *before* the swap, with `indices` naming
+ *   the two positions; the following 'pass-complete' frame shows the result.
+ * - The loop runs `i < n` (the displayed sources use `n - 1`), so the final
+ *   element still gets an 'outer-loop'/'init-min'/'pass-complete' frame with
+ *   no comparisons. The sorted result is identical.
+ * - `sortedIndices` grows by one index per pass; the 'start' frame has none.
+ *
+ * Other fixtures: [2, 2, 1] -> [1, 2, 2] (1 swap; equal values are not
+ * swapped with each other), [1, 2, 3] -> [1, 2, 3] (0 swaps),
+ * [3, 2, 1] -> [1, 2, 3] (1 swap), [1] -> [1], [] -> [].
+ *
+ * @param {number[]} inputArray - values to sort (not mutated)
+ * @returns {object[]} replay steps; the last step has type 'complete' and
+ *   `array` equal to the sorted input
+ */
 export function generateSelectionSortSteps(inputArray) {
   const arr = [...inputArray]
   const steps = []
@@ -213,7 +249,7 @@ export function generateSelectionSortSteps(inputArray) {
       lineKey: 'function',
       type: 'start',
       array: arr,
-      sortedIndices,
+      sortedIndices: [...sortedIndices],
       message: 'Selection Sort starts.',
       variables: { n },
       duration: 700,
